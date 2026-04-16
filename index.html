@@ -134,7 +134,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, orderBy, query, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, orderBy, query, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
             authDomain: "food-diary-e17e4.firebaseapp.com",
@@ -145,6 +145,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        let editId = null;
         const db = getFirestore(app);
 
         // IndexedDBの設定
@@ -220,15 +221,25 @@
                     await savePhoto(photoId, photoFile);
                 }
 
-                await addDoc(collection(db, "meals"), {
-                    datetime: datetime,
-                    duration: Number(duration),
-                    condition: condition,
-                    photoId: photoId,
-                    createdAt: new Date()
-                });
-
-                alert('記録しました！');
+                if (editId) {
+                    await updateDoc(doc(db, "meals", editId), {
+                        datetime: datetime,
+                        duration: Number(duration),
+                        condition: condition,
+                        photoId: photoId || null
+                    });
+                    editId = null;
+                    alert('更新しました！');
+                } else {
+                    await addDoc(collection(db, "meals"), {
+                        datetime: datetime,
+                        duration: Number(duration),
+                        condition: condition,
+                        photoId: photoId,
+                        createdAt: new Date()
+                    });
+                    alert('記録しました！');
+                }
 
                 // フォームをリセット
                 document.getElementById('duration').value = '';
@@ -281,9 +292,19 @@
                         <div>⏱️ ${data.duration}分</div>
                         <div>💊 ${data.condition || 'メモなし'}</div>
                         ${photoHtml}
-                        <button class="deleteButton" data-id="${docSnapshot.id}" style="background-color:#e53935;margin-top:10px;">🗑️ 削除</button>
+                        <button class="editButton" data-id="${docSnapshot.id}" style="background-color:#1976D2;margin-top:10px;margin-bottom:5px;">✏️ 編集</button>
+                        <button class="deleteButton" data-id="${docSnapshot.id}" style="background-color:#e53935;margin-top:5px;">🗑️ 削除</button>
                     `;
                     listContent.appendChild(div);
+                    div.querySelector('.editButton').addEventListener('click', async (e) => {
+                        const id = e.target.dataset.id;
+                        const data = docSnapshot.data();
+                        document.getElementById('datetime').value = data.datetime;
+                        document.getElementById('duration').value = data.duration;
+                        document.getElementById('condition').value = data.condition || '';
+                        editId = id;
+                        showTab('record');
+                    });
                     div.querySelector('.deleteButton').addEventListener('click', async (e) => {
                     if (!confirm('この記録を削除しますか？')) return;
                     const id = e.target.dataset.id;
