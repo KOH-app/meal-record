@@ -134,7 +134,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, orderBy, query, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
             authDomain: "food-diary-e17e4.firebaseapp.com",
@@ -276,14 +276,25 @@
                             photoHtml = `<img src="${url}" alt="食事の写真">`;
                         }
                     }
-
                     div.innerHTML = `
                         <div class="record-date">${data.datetime.replace('T', ' ')}</div>
                         <div>⏱️ ${data.duration}分</div>
                         <div>💊 ${data.condition || 'メモなし'}</div>
                         ${photoHtml}
+                        <button class="deleteButton" data-id="${doc.id}" style="background-color:#e53935;margin-top:10px;">🗑️ 削除</button>
                     `;
                     listContent.appendChild(div);
+                    div.querySelector('.deleteButton').addEventListener('click', async (e) => {
+                    if (!confirm('この記録を削除しますか？')) return;
+                    const id = e.target.dataset.id;
+                    try {
+                        await deleteDoc(doc(db, "meals", id));
+                        alert('削除しました！');
+                        loadRecords();
+                    } catch (e) {
+                        alert('エラーが発生しました：' + e.message);
+                    }
+                });
                 }
             } catch (e) {
                 listContent.innerHTML = 'エラーが発生しました：' + e.message;
