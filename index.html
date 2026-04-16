@@ -82,24 +82,29 @@
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // Firebaseの設定（ここを置き換える）
-const firebaseConfig = {
-    apiKey: "実際の値",
-    authDomain: "実際の値",
-    projectId: "実際の値",
-    storageBucket: "実際の値",
-    messagingSenderId: "実際の値",
-    appId: "実際の値"
+ "実際の値"
 };
         // 初期化
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         // 現在の日時をセット
-        const now = new Date();
-        const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 16);
-        document.getElementById('datetime').value = localDatetime;
+        const firebaseConfig = {
+
+  apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
+
+  authDomain: "food-diary-e17e4.firebaseapp.com",
+
+  projectId: "food-diary-e17e4",
+
+  storageBucket: "food-diary-e17e4.firebasestorage.app",
+
+  messagingSenderId: "124881961514",
+
+  appId: "1:124881961514:web:bcf81615732c3b08db7953"
+
+};
+document.getElementById('datetime').value = localDatetime;
 
         // 記録を保存する関数
         window.saveRecord = async function() {
