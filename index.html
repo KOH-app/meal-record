@@ -45,41 +45,96 @@
             border-radius: 10px;
             font-size: 18px;
             cursor: pointer;
+            margin-bottom: 10px;
         }
         button:hover {
             background-color: #45a049;
+        }
+        #preview {
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: none;
+        }
+        .record {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .record img {
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        .record-date {
+            font-size: 14px;
+            color: #888;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: white;
+            border: none;
+            border-radius: 10px;
+            margin-right: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #recordForm, #recordList {
+            display: none;
         }
     </style>
 </head>
 <body>
     <h1>🍽️ 食事記録</h1>
 
-    <div class="form-group">
-        <label>📅 日付・時間</label>
-        <input type="datetime-local" id="datetime">
+    <div class="tabs">
+        <button class="tab active" id="tabRecord" onclick="showTab('record')">記録する</button>
+        <button class="tab" id="tabList" onclick="showTab('list')">一覧</button>
     </div>
 
-    <div class="form-group">
-        <label>⏱️ 食事にかかった時間（分）</label>
-        <input type="number" id="duration" placeholder="例：20">
+    <div id="recordForm">
+        <div class="form-group">
+            <label>📅 日付・時間</label>
+            <input type="datetime-local" id="datetime">
+        </div>
+
+        <div class="form-group">
+            <label>⏱️ 食事にかかった時間（分）</label>
+            <input type="number" id="duration" placeholder="例：20">
+        </div>
+
+        <div class="form-group">
+            <label>📷 写真</label>
+            <input type="file" id="photo" accept="image/*">
+            <img id="preview">
+        </div>
+
+        <div class="form-group">
+            <label>💊 食後の体調</label>
+            <textarea id="condition" rows="3" placeholder="例：少し眠い、胃が重い、元気など"></textarea>
+        </div>
+
+        <button id="saveButton">記録する</button>
     </div>
 
-    <div class="form-group">
-        <label>📷 写真</label>
-        <input type="file" id="photo" accept="image/*" capture="environment">
+    <div id="recordList">
+        <div id="listContent">読み込み中...</div>
     </div>
-
-    <div class="form-group">
-        <label>💊 食後の体調</label>
-        <textarea id="condition" rows="3" placeholder="例：少し眠い、胃が重い、元気など"></textarea>
-    </div>
-
-    <button id="saveButton">記録する</button>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+        import { getFirestore, collection, addDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
             authDomain: "food-diary-e17e4.firebaseapp.com",
@@ -92,16 +147,66 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // IndexedDBの設定
+        let idb;
+        const idbRequest = indexedDB.open('mealPhotos', 1);
+        idbRequest.onupgradeneeded = (e) => {
+            idb = e.target.result;
+            idb.createObjectStore('photos', { keyPath: 'id' });
+        };
+        idbRequest.onsuccess = (e) => {
+            idb = e.target.result;
+        };
+
+        // 写真をIndexedDBに保存
+        function savePhoto(id, blob) {
+            return new Promise((resolve, reject) => {
+                const tx = idb.transaction('photos', 'readwrite');
+                const store = tx.objectStore('photos');
+                store.put({ id, blob });
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        // 写真をIndexedDBから取得
+        function getPhoto(id) {
+            return new Promise((resolve, reject) => {
+                const tx = idb.transaction('photos', 'readonly');
+                const store = tx.objectStore('photos');
+                const req = store.get(id);
+                req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // 現在の日時をセット
         const now = new Date();
         const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
             .toISOString()
             .slice(0, 16);
         document.getElementById('datetime').value = localDatetime;
 
-        async function saveRecord() {
+        // 写真プレビュー
+        document.getElementById('photo').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 記録を保存
+        document.getElementById('saveButton').addEventListener('click', async () => {
             const datetime = document.getElementById('datetime').value;
             const duration = document.getElementById('duration').value;
             const condition = document.getElementById('condition').value;
+            const photoFile = document.getElementById('photo').files[0];
 
             if (!datetime || !duration) {
                 alert('日付・時間と食事時間は必須です！');
@@ -109,19 +214,100 @@
             }
 
             try {
+                const photoId = photoFile ? 'photo_' + Date.now() : null;
+
+                if (photoFile && idb) {
+                    await savePhoto(photoId, photoFile);
+                }
+
                 await addDoc(collection(db, "meals"), {
                     datetime: datetime,
                     duration: Number(duration),
                     condition: condition,
+                    photoId: photoId,
                     createdAt: new Date()
                 });
+
                 alert('記録しました！');
+
+                // フォームをリセット
+                document.getElementById('duration').value = '';
+                document.getElementById('condition').value = '';
+                document.getElementById('photo').value = '';
+                document.getElementById('preview').style.display = 'none';
+
+                const now = new Date();
+                const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                    .toISOString()
+                    .slice(0, 16);
+                document.getElementById('datetime').value = localDatetime;
+
             } catch (e) {
                 alert('エラーが発生しました：' + e.message);
             }
+        });
+
+        // 一覧を表示
+        async function loadRecords() {
+            const listContent = document.getElementById('listContent');
+            listContent.innerHTML = '読み込み中...';
+
+            try {
+                const q = query(collection(db, "meals"), orderBy("datetime", "desc"));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    listContent.innerHTML = '<p>記録がありません</p>';
+                    return;
+                }
+
+                listContent.innerHTML = '';
+
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const div = document.createElement('div');
+                    div.className = 'record';
+
+                    let photoHtml = '';
+                    if (data.photoId && idb) {
+                        const blob = await getPhoto(data.photoId);
+                        if (blob) {
+                            const url = URL.createObjectURL(blob);
+                            photoHtml = `<img src="${url}" alt="食事の写真">`;
+                        }
+                    }
+
+                    div.innerHTML = `
+                        <div class="record-date">${data.datetime.replace('T', ' ')}</div>
+                        <div>⏱️ ${data.duration}分</div>
+                        <div>💊 ${data.condition || 'メモなし'}</div>
+                        ${photoHtml}
+                    `;
+                    listContent.appendChild(div);
+                }
+            } catch (e) {
+                listContent.innerHTML = 'エラーが発生しました：' + e.message;
+            }
         }
 
-        document.getElementById('saveButton').addEventListener('click', saveRecord);
+        // タブ切り替え
+        window.showTab = function(tab) {
+            if (tab === 'record') {
+                document.getElementById('recordForm').style.display = 'block';
+                document.getElementById('recordList').style.display = 'none';
+                document.getElementById('tabRecord').classList.add('active');
+                document.getElementById('tabList').classList.remove('active');
+            } else {
+                document.getElementById('recordForm').style.display = 'none';
+                document.getElementById('recordList').style.display = 'block';
+                document.getElementById('tabRecord').classList.remove('active');
+                document.getElementById('tabList').classList.add('active');
+                loadRecords();
+            }
+        };
+
+        // 最初に記録フォームを表示
+        showTab('record');
     </script>
 </body>
 </html>
