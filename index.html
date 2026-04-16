@@ -294,8 +294,10 @@
                         <div>⏱️ ${data.duration}分</div>
                         <div>💊 ${data.condition || 'メモなし'}</div>
                         ${photoHtml}
-                        <button class="editButton" data-id="${docSnapshot.id}" style="background-color:#1976D2;margin-top:10px;margin-bottom:5px;">✏️ 編集</button>
-                        <button class="deleteButton" data-id="${docSnapshot.id}" style="background-color:#e53935;margin-top:5px;">🗑️ 削除</button>
+                        <div style="display:flex;gap:10px;margin-top:10px;">
+                            <button class="editButton" data-id="${docSnapshot.id}" style="background-color:#1976D2;flex:1;">✏️ 編集</button>
+                            <button class="deleteButton" data-id="${docSnapshot.id}" style="background-color:#e53935;flex:1;">🗑️ 削除</button>
+                        </div>
                     `;
                     listContent.appendChild(div);
                     div.querySelector('.editButton').addEventListener('click', async (e) => {
