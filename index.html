@@ -74,7 +74,7 @@
         <textarea id="condition" rows="3" placeholder="例：少し眠い、胃が重い、元気など"></textarea>
     </div>
 
-    <button onclick="saveRecord()">記録する</button>
+    <button id="saveRecord()">記録する</button>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -129,6 +129,7 @@ document.getElementById('datetime').value = localDatetime;
                 alert('エラーが発生しました：' + e.message);
             }
         }
+        document.getElementById('saveButton').addEventListener('click', saveRecord);
     </script>
 </body>
 </html>
