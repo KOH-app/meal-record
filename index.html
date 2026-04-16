@@ -74,40 +74,31 @@
         <textarea id="condition" rows="3" placeholder="例：少し眠い、胃が重い、元気など"></textarea>
     </div>
 
-    <button id="saveRecord()">記録する</button>
+    <button id="saveButton">記録する</button>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Firebaseの設定（ここを置き換える）
- "実際の値"
-;
-        // 初期化
+        const firebaseConfig = {
+            apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
+            authDomain: "food-diary-e17e4.firebaseapp.com",
+            projectId: "food-diary-e17e4",
+            storageBucket: "food-diary-e17e4.firebasestorage.app",
+            messagingSenderId: "124881961514",
+            appId: "1:124881961514:web:bcf81615732c3b08db7953"
+        };
+
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 現在の日時をセット
-        const firebaseConfig = {
+        const now = new Date();
+        const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16);
+        document.getElementById('datetime').value = localDatetime;
 
-  apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
-
-  authDomain: "food-diary-e17e4.firebaseapp.com",
-
-  projectId: "food-diary-e17e4",
-
-  storageBucket: "food-diary-e17e4.firebasestorage.app",
-
-  messagingSenderId: "124881961514",
-
-  appId: "1:124881961514:web:bcf81615732c3b08db7953"
-
-};
-document.getElementById('datetime').value = localDatetime;
-
-        // 記録を保存する関数
-        window.saveRecord = async function() {
+        async function saveRecord() {
             const datetime = document.getElementById('datetime').value;
             const duration = document.getElementById('duration').value;
             const condition = document.getElementById('condition').value;
@@ -129,6 +120,7 @@ document.getElementById('datetime').value = localDatetime;
                 alert('エラーが発生しました：' + e.message);
             }
         }
+
         document.getElementById('saveButton').addEventListener('click', saveRecord);
     </script>
 </body>
