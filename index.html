@@ -146,6 +146,7 @@
 
         const app = initializeApp(firebaseConfig);
         let editId = null;
+        let editPhotoId = null;
         const db = getFirestore(app);
 
         // IndexedDBの設定
@@ -215,7 +216,7 @@
             }
 
             try {
-                const photoId = photoFile ? 'photo_' + Date.now() : null;
+                const photoId = photoFile ? 'photo_' + Date.now() : (editPhotoId || null);
 
                 if (photoFile && idb) {
                     await savePhoto(photoId, photoFile);
@@ -229,6 +230,7 @@
                         photoId: photoId || null
                     });
                     editId = null;
+                    editPhotoId = null;
                     alert('更新しました！');
                 } else {
                     await addDoc(collection(db, "meals"), {
@@ -303,6 +305,16 @@
                         document.getElementById('duration').value = data.duration;
                         document.getElementById('condition').value = data.condition || '';
                         editId = id;
+                        editPhotoId = data.photoId || null;
+                        if (data.photoId && idb) {
+                            const blob = await getPhoto(data.photoId);
+                            if (blob) {
+                                const url = URL.createObjectURL(blob);
+                                const preview = document.getElementById('preview');
+                                preview.src = url;
+                                preview.style.display = 'block';
+                            }
+                        }
                         showTab('record');
                     });
                     div.querySelector('.deleteButton').addEventListener('click', async (e) => {
