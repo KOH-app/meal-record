@@ -76,7 +76,24 @@
 
     <button onclick="saveRecord()">記録する</button>
 
-    <script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebaseの設定（ここを置き換える）
+const firebaseConfig = {
+    apiKey: "実際の値",
+    authDomain: "実際の値",
+    projectId: "実際の値",
+    storageBucket: "実際の値",
+    messagingSenderId: "実際の値",
+    appId: "実際の値"
+};
+        // 初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         // 現在の日時をセット
         const now = new Date();
         const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -84,8 +101,28 @@
             .slice(0, 16);
         document.getElementById('datetime').value = localDatetime;
 
-        function saveRecord() {
-            alert('保存機能は準備中です！');
+        // 記録を保存する関数
+        window.saveRecord = async function() {
+            const datetime = document.getElementById('datetime').value;
+            const duration = document.getElementById('duration').value;
+            const condition = document.getElementById('condition').value;
+
+            if (!datetime || !duration) {
+                alert('日付・時間と食事時間は必須です！');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "meals"), {
+                    datetime: datetime,
+                    duration: Number(duration),
+                    condition: condition,
+                    createdAt: new Date()
+                });
+                alert('記録しました！');
+            } catch (e) {
+                alert('エラーが発生しました：' + e.message);
+            }
         }
     </script>
 </body>
