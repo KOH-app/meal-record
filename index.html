@@ -6,6 +6,7 @@
     <title>食事記録</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4CAF50">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="食事記録">
@@ -33,13 +34,19 @@
             font-weight: bold;
             color: #555;
         }
-        input, textarea {
+        input[type="datetime-local"],
+        input[type="number"],
+        textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
             font-size: 16px;
             box-sizing: border-box;
+        }
+        input[type="file"] {
+            width: 100%;
+            margin-top: 5px;
         }
         button {
             width: 100%;
@@ -55,11 +62,16 @@
         button:hover {
             background-color: #45a049;
         }
-        #preview {
+        #addPhotoButton {
+            background-color: #1976D2;
+        }
+        #addPhotoButton:hover {
+            background-color: #1565C0;
+        }
+        .preview-img {
             width: 100%;
             border-radius: 10px;
             margin-top: 10px;
-            display: none;
         }
         .record {
             background: white;
@@ -124,7 +136,7 @@
             <div id="photoInputs">
                 <input type="file" class="photoInput" accept="image/*">
             </div>
-            <button type="button" id="addPhotoButton" style="background-color:#1976D2;margin-bottom:10px;">📷 写真を追加</button>
+            <button type="button" id="addPhotoButton">📷 写真を追加</button>
             <div id="preview"></div>
         </div>
 
@@ -143,6 +155,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, orderBy, query, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
         const firebaseConfig = {
             apiKey: "AIzaSyCPPQbwhTmuQi2OVS4UZZLM718GaRXt6wA",
             authDomain: "food-diary-e17e4.firebaseapp.com",
@@ -153,9 +166,10 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         let editId = null;
         let editPhotoId = null;
-        const db = getFirestore(app);
 
         // IndexedDBの設定
         let idb;
@@ -191,13 +205,16 @@
         }
 
         // 現在の日時をセット
-        const now = new Date();
-        const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-            .toISOString()
-            .slice(0, 16);
-        document.getElementById('datetime').value = localDatetime;
+        function setCurrentDatetime() {
+            const now = new Date();
+            const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+            document.getElementById('datetime').value = localDatetime;
+        }
+        setCurrentDatetime();
 
-        // 写真プレビュー
+        // 写真プレビューのリスナーを追加
         function addPhotoChangeListener(input) {
             input.addEventListener('change', (e) => {
                 const file = e.target.files[0];
@@ -207,7 +224,7 @@
                         const preview = document.getElementById('preview');
                         const img = document.createElement('img');
                         img.src = ev.target.result;
-                        img.style.cssText = 'width:100%;border-radius:10px;margin-top:10px;';
+                        img.className = 'preview-img';
                         preview.appendChild(img);
                     };
                     reader.readAsDataURL(file);
@@ -217,6 +234,7 @@
 
         addPhotoChangeListener(document.querySelector('.photoInput'));
 
+        // 写真を追加ボタン
         document.getElementById('addPhotoButton').addEventListener('click', () => {
             const div = document.getElementById('photoInputs');
             const input = document.createElement('input');
@@ -227,11 +245,13 @@
             div.appendChild(input);
             addPhotoChangeListener(input);
         });
+
         // 記録を保存
         document.getElementById('saveButton').addEventListener('click', async () => {
             const datetime = document.getElementById('datetime').value;
             const duration = document.getElementById('duration').value;
             const condition = document.getElementById('condition').value;
+
             if (!datetime || !duration) {
                 alert('日付・時間と食事時間は必須です！');
                 return;
@@ -241,7 +261,8 @@
                 const photoInputs = document.querySelectorAll('.photoInput');
                 const photoFiles = Array.from(photoInputs).map(input => input.files[0]).filter(Boolean);
                 const photoIds = [];
-                if (photoFiles.length > 0) {
+
+                if (photoFiles.length > 0 && idb) {
                     for (const file of photoFiles) {
                         const photoId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                         await savePhoto(photoId, file);
@@ -251,16 +272,12 @@
                     photoIds.push(...(Array.isArray(editPhotoId) ? editPhotoId : [editPhotoId]));
                 }
 
-                if (photoFiles.length > 0 && idb) {
-                    for (const file of photoFiles) {
-                }
-
                 if (editId) {
                     await updateDoc(doc(db, "meals", editId), {
                         datetime: datetime,
                         duration: Number(duration),
                         condition: condition,
-                        photoId: photoIds,
+                        photoId: photoIds
                     });
                     editId = null;
                     editPhotoId = null;
@@ -279,14 +296,10 @@
                 // フォームをリセット
                 document.getElementById('duration').value = '';
                 document.getElementById('condition').value = '';
-                document.getElementById('photo').value = '';
-                document.getElementById('preview').style.display = 'none';
-
-                const now = new Date();
-                const localDatetime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-                    .toISOString()
-                    .slice(0, 16);
-                document.getElementById('datetime').value = localDatetime;
+                document.getElementById('preview').innerHTML = '';
+                document.getElementById('photoInputs').innerHTML = '<input type="file" class="photoInput" accept="image/*">';
+                addPhotoChangeListener(document.querySelector('.photoInput'));
+                setCurrentDatetime();
 
             } catch (e) {
                 alert('エラーが発生しました：' + e.message);
@@ -321,10 +334,11 @@
                             const blob = await getPhoto(pid);
                             if (blob) {
                                 const url = URL.createObjectURL(blob);
-                                photoHtml += `<img src="${url}" alt="食事の写真" style="width:100%;border-radius:10px;margin-top:10px;">`;
+                                photoHtml += `<img src="${url}" alt="食事の写真">`;
                             }
                         }
                     }
+
                     div.innerHTML = `
                         <div class="record-date">${data.datetime.replace('T', ' ')}</div>
                         <div>⏱️ ${data.duration}分</div>
@@ -336,6 +350,7 @@
                         </div>
                     `;
                     listContent.appendChild(div);
+
                     div.querySelector('.editButton').addEventListener('click', async (e) => {
                         const id = e.target.dataset.id;
                         const data = docSnapshot.data();
@@ -354,24 +369,25 @@
                                     const url = URL.createObjectURL(blob);
                                     const img = document.createElement('img');
                                     img.src = url;
-                                    img.style.cssText = 'width:100%;border-radius:10px;margin-top:10px;';
+                                    img.className = 'preview-img';
                                     preview.appendChild(img);
                                 }
                             }
                         }
                         showTab('record');
                     });
+
                     div.querySelector('.deleteButton').addEventListener('click', async (e) => {
-                    if (!confirm('この記録を削除しますか？')) return;
-                    const id = e.target.dataset.id;
-                    try {
-                        await deleteDoc(doc(db, "meals", id));
-                        alert('削除しました！');
-                        loadRecords();
-                    } catch (e) {
-                        alert('エラーが発生しました：' + e.message);
-                    }
-                });
+                        if (!confirm('この記録を削除しますか？')) return;
+                        const id = e.target.dataset.id;
+                        try {
+                            await deleteDoc(doc(db, "meals", id));
+                            alert('削除しました！');
+                            loadRecords();
+                        } catch (e) {
+                            alert('エラーが発生しました：' + e.message);
+                        }
+                    });
                 }
             } catch (e) {
                 listContent.innerHTML = 'エラーが発生しました：' + e.message;
@@ -394,9 +410,9 @@
             }
         };
 
-        // 最初に記録フォームを表示
         showTab('record');
     </script>
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
