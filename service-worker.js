@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meal-record-v1';
+const CACHE_NAME = 'meal-record-v2';
 const urlsToCache = [
     '/meal-record/',
     '/meal-record/index.html',
