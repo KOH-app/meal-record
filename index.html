@@ -121,8 +121,8 @@
 
         <div class="form-group">
             <label>📷 写真</label>
-            <input type="file" id="photo" accept="image/*">
-            <img id="preview">
+            <input type="file" id="photo" accept="image/*" multiple>
+            <div id="preview"></div>
         </div>
 
         <div class="form-group">
@@ -196,13 +196,16 @@
 
         // 写真プレビュー
         document.getElementById('photo').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
+            const files = e.target.files;
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            for (const file of files) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const preview = document.getElementById('preview');
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width:100%;border-radius:10px;margin-top:10px;';
+                    preview.appendChild(img);
                 };
                 reader.readAsDataURL(file);
             }
@@ -221,7 +224,17 @@
             }
 
             try {
-                const photoId = photoFile ? 'photo_' + Date.now() : (editPhotoId || null);
+                const photoFiles = document.getElementById('photo').files;
+                const photoIds = [];
+                if (photoFiles.length > 0) {
+                    for (const file of photoFiles) {
+                        const photoId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        await savePhoto(photoId, file);
+                        photoIds.push(photoId);
+                    }
+                } else if (editPhotoId) {
+                    photoIds.push(...(Array.isArray(editPhotoId) ? editPhotoId : [editPhotoId]));
+                }
 
                 if (photoFile && idb) {
                     await savePhoto(photoId, photoFile);
@@ -232,7 +245,7 @@
                         datetime: datetime,
                         duration: Number(duration),
                         condition: condition,
-                        photoId: photoId || null
+                        photoId: photoIds,
                     });
                     editId = null;
                     editPhotoId = null;
@@ -242,7 +255,7 @@
                         datetime: datetime,
                         duration: Number(duration),
                         condition: condition,
-                        photoId: photoId,
+                        photoId: photoIds,
                         createdAt: new Date()
                     });
                     alert('記録しました！');
@@ -288,10 +301,13 @@
 
                     let photoHtml = '';
                     if (data.photoId && idb) {
-                        const blob = await getPhoto(data.photoId);
-                        if (blob) {
-                            const url = URL.createObjectURL(blob);
-                            photoHtml = `<img src="${url}" alt="食事の写真">`;
+                        const photoIdArray = Array.isArray(data.photoId) ? data.photoId : [data.photoId];
+                        for (const pid of photoIdArray) {
+                            const blob = await getPhoto(pid);
+                            if (blob) {
+                                const url = URL.createObjectURL(blob);
+                                photoHtml += `<img src="${url}" alt="食事の写真" style="width:100%;border-radius:10px;margin-top:10px;">`;
+                            }
                         }
                     }
                     div.innerHTML = `
@@ -314,12 +330,18 @@
                         editId = id;
                         editPhotoId = data.photoId || null;
                         if (data.photoId && idb) {
-                            const blob = await getPhoto(data.photoId);
-                            if (blob) {
-                                const url = URL.createObjectURL(blob);
-                                const preview = document.getElementById('preview');
-                                preview.src = url;
-                                preview.style.display = 'block';
+                            const photoIdArray = Array.isArray(data.photoId) ? data.photoId : [data.photoId];
+                            const preview = document.getElementById('preview');
+                            preview.innerHTML = '';
+                            for (const pid of photoIdArray) {
+                                const blob = await getPhoto(pid);
+                                if (blob) {
+                                    const url = URL.createObjectURL(blob);
+                                    const img = document.createElement('img');
+                                    img.src = url;
+                                    img.style.cssText = 'width:100%;border-radius:10px;margin-top:10px;';
+                                    preview.appendChild(img);
+                                }
                             }
                         }
                         showTab('record');
