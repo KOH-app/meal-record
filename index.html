@@ -121,7 +121,10 @@
 
         <div class="form-group">
             <label>📷 写真</label>
-            <input type="file" id="photo" accept="image/*" multiple>
+            <div id="photoInputs">
+                <input type="file" class="photoInput" accept="image/*">
+            </div>
+            <button type="button" id="addPhotoButton" style="background-color:#1976D2;margin-bottom:10px;">📷 写真を追加</button>
             <div id="preview"></div>
         </div>
 
@@ -195,22 +198,35 @@
         document.getElementById('datetime').value = localDatetime;
 
         // 写真プレビュー
-        document.getElementById('photo').addEventListener('change', (e) => {
-            const files = e.target.files;
-            const preview = document.getElementById('preview');
-            preview.innerHTML = '';
-            for (const file of files) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.cssText = 'width:100%;border-radius:10px;margin-top:10px;';
-                    preview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        function addPhotoChangeListener(input) {
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const preview = document.getElementById('preview');
+                        const img = document.createElement('img');
+                        img.src = ev.target.result;
+                        img.style.cssText = 'width:100%;border-radius:10px;margin-top:10px;';
+                        preview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
 
+        addPhotoChangeListener(document.querySelector('.photoInput'));
+
+        document.getElementById('addPhotoButton').addEventListener('click', () => {
+            const div = document.getElementById('photoInputs');
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.className = 'photoInput';
+            input.accept = 'image/*';
+            input.style.marginTop = '10px';
+            div.appendChild(input);
+            addPhotoChangeListener(input);
+        });
         // 記録を保存
         document.getElementById('saveButton').addEventListener('click', async () => {
             const datetime = document.getElementById('datetime').value;
@@ -224,7 +240,8 @@
             }
 
             try {
-                const photoFiles = document.getElementById('photo').files;
+                const photoInputs = document.querySelectorAll('.photoInput');
+                const photoFiles = Array.from(photoInputs).map(input => input.files[0]).filter(Boolean);
                 const photoIds = [];
                 if (photoFiles.length > 0) {
                     for (const file of photoFiles) {
