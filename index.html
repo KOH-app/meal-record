@@ -251,8 +251,8 @@
                     photoIds.push(...(Array.isArray(editPhotoId) ? editPhotoId : [editPhotoId]));
                 }
 
-                if (photoFile && idb) {
-                    await savePhoto(photoId, photoFile);
+                if (photoFiles.length > 0 && idb) {
+                    for (const file of photoFiles) {
                 }
 
                 if (editId) {
